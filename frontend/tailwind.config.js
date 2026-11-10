@@ -22,8 +22,10 @@ export default {
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },
   plugins: [],
 }
+

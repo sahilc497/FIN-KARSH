@@ -1,0 +1,43 @@
+{
+  "model_id": "TATAMOTORS.NS_ExtraTrees_16a033e5",
+  "model_name": "ExtraTrees",
+  "symbol": "TATAMOTORS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.3789,
+    "balanced_accuracy": 0.3783,
+    "precision": 0.3962,
+    "recall": 0.4375,
+    "f1_score": 0.4158,
+    "mcc": -0.245,
+    "directional_accuracy": 0.3789,
+    "roc_auc": 0.3613,
+    "pr_auc": 0.4109,
+    "confusion_matrix": [
+      [
+        15,
+        32
+      ],
+      [
+        27,
+        21
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -22.22,
+    "benchmark_return_pct": -3.43,
+    "annualized_return_pct": -48.66,
+    "sharpe_ratio": -2.83,
+    "sortino_ratio": -3.36,
+    "max_drawdown_pct": -22.1,
+    "win_rate_pct": 88.0,
+    "profit_factor": 0.57,
+    "total_trades": 25
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5053,
+    "previous_day_accuracy": 0.5474,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

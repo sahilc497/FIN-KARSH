@@ -1,0 +1,43 @@
+{
+  "model_id": "TATAMOTORS.NS_PyTorch_LSTM_5720fd0d",
+  "model_name": "PyTorch_LSTM",
+  "symbol": "TATAMOTORS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.6526,
+    "balanced_accuracy": 0.6512,
+    "precision": 0.623,
+    "recall": 0.7917,
+    "f1_score": 0.6972,
+    "mcc": 0.3153,
+    "directional_accuracy": 0.6526,
+    "roc_auc": 0.727,
+    "pr_auc": 0.6982,
+    "confusion_matrix": [
+      [
+        24,
+        23
+      ],
+      [
+        10,
+        38
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": 4.4,
+    "benchmark_return_pct": -3.43,
+    "annualized_return_pct": 12.11,
+    "sharpe_ratio": 0.38,
+    "sortino_ratio": 0.53,
+    "max_drawdown_pct": -6.27,
+    "win_rate_pct": 160.0,
+    "profit_factor": 1.13,
+    "total_trades": 20
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5053,
+    "previous_day_accuracy": 0.5474,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

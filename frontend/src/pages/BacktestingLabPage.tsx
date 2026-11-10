@@ -1,423 +1,341 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import {
-  Sliders,
-  TrendingUp,
-  Percent,
+  History,
   Play,
-  RotateCcw,
-  ShieldCheck,
-  AlertCircle,
-  FileSpreadsheet,
-  ArrowUpRight,
-  ArrowDownRight,
+  TrendingUp,
+  ShieldAlert,
+  Sliders,
+  DollarSign,
+  Percent,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
   Line,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
   Legend,
+  AreaChart,
+  Area,
 } from 'recharts';
-import { apiClient } from '../api/client';
-import { BacktestRun } from '../types';
 
 export const BacktestingLabPage: React.FC = () => {
-  const [symbol, setSymbol] = useState<string>('RELIANCE');
-  const [strategyType, setStrategyType] = useState<string>('sentiment_momentum');
-  const [initialCapital, setInitialCapital] = useState<number>(100000);
-  const [entryThreshold, setEntryThreshold] = useState<number>(0.15);
-  const [exitThreshold, setExitThreshold] = useState<number>(-0.05);
-  const [transactionCost, setTransactionCost] = useState<number>(0.001); // 10 bps
-  const [slippage, setSlippage] = useState<number>(0.0005); // 5 bps
+  const [stocks, setStocks] = useState<any[]>([]);
+  const [symbol, setSymbol] = useState<string>('RELIANCE.NS');
+  const [capital, setCapital] = useState<number>(100000);
+  const [horizon, setHorizon] = useState<number>(5);
+  const [strategy, setStrategy] = useState<string>('threshold_filtered');
+  const [feeBps, setFeeBps] = useState<number>(5); // 0.05%
+  const [slippageBps, setSlippageBps] = useState<number>(5); // 0.05%
 
-  const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
+  const [running, setRunning] = useState<boolean>(false);
+  const [result, setResult] = useState<any>(null);
 
-  const { data: stocks } = useQuery({
-    queryKey: ['stocks'],
-    queryFn: () => apiClient.getStocks(),
-  });
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        const res = await api.getStocks();
+        const activeStocks = res.filter((s: any) => s.symbol !== '^NSEI');
+        setStocks(activeStocks);
+        if (activeStocks.length > 0) {
+          // Run default initial backtest
+          runSimulation(activeStocks[0].symbol);
+        }
+      } catch (err) {
+        console.error('Failed to load stocks:', err);
+      }
+    };
+    fetchStocks();
+  }, []);
 
-  const { data: backtestList, refetch: refetchList } = useQuery({
-    queryKey: ['backtests'],
-    queryFn: () => apiClient.getBacktests(),
-  });
-
-  // Pick first backtest when list loads if none active
-  React.useEffect(() => {
-    if (backtestList && backtestList.length > 0 && !activeBacktest) {
-      setActiveBacktest(backtestList[0]);
+  const runSimulation = async (selectedSym = symbol) => {
+    setRunning(true);
+    try {
+      const res = await api.runBacktest({
+        symbol: selectedSym,
+        initial_capital: capital,
+        horizon_days: horizon,
+        strategy: strategy,
+        fee_pct: feeBps / 10000.0,
+        slippage_pct: slippageBps / 10000.0,
+      });
+      setResult(res);
+    } catch (err) {
+      console.error('Backtest error:', err);
+    } finally {
+      setRunning(false);
     }
-  }, [backtestList, activeBacktest]);
-
-  const backtestMutation = useMutation({
-    mutationFn: apiClient.runBacktest,
-    onSuccess: (data) => {
-      setActiveBacktest(data);
-      refetchList();
-    },
-  });
-
-  const handleRunBacktest = () => {
-    backtestMutation.mutate({
-      symbol,
-      strategy_type: strategyType,
-      initial_capital: initialCapital,
-      entry_sentiment_threshold: entryThreshold,
-      exit_sentiment_threshold: exitThreshold,
-      transaction_cost_pct: transactionCost,
-      slippage_pct: slippage,
-    });
   };
 
-  const trades = activeBacktest?.trades || [];
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-white font-mono flex items-center gap-2">
-            <Sliders className="w-5 h-5 text-cyan-400" />
-            QUANTITATIVE BACKTESTING ENGINE
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Realistic long-only strategy simulation with session-next execution, slippage, and fee accounting.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Page Title */}
+      <div className="pb-4 border-b border-[#334155]">
+        <h1 className="text-xl font-bold font-mono tracking-tight text-slate-100 flex items-center gap-2">
+          <History className="w-5 h-5 text-sky-400" />
+          HISTORICAL BACKTESTING ENGINE & STRATEGY SIMULATOR
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">
+          Rigorous chronological event-driven simulation with realistic transaction friction, slippage, and zero look-ahead bias.
+        </p>
       </div>
 
-      {/* Strategy Configuration & Key Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Column: Form Controls */}
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              Strategy Parameters
-            </span>
-          </div>
-
-          {/* Stock Symbol */}
-          <div className="space-y-1">
-            <label className="text-xs font-mono text-slate-400">Target Asset</label>
+      {/* Configuration Controls */}
+      <div className="bg-[#0f172a] border border-[#334155] rounded-lg p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+          <div>
+            <label className="text-xs font-mono font-semibold text-slate-300 block mb-1">EQUITY:</label>
             <select
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-[#1e293b] border border-[#334155] rounded px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-400"
             >
-              {stocks?.map((s) => (
+              {stocks.map((s) => (
                 <option key={s.symbol} value={s.symbol}>
-                  {s.symbol} ({s.company_name})
+                  {s.symbol}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Strategy Model */}
-          <div className="space-y-1">
-            <label className="text-xs font-mono text-slate-400">Trading Model</label>
+          <div>
+            <label className="text-xs font-mono font-semibold text-slate-300 block mb-1">INITIAL CAPITAL (₹):</label>
+            <input
+              type="number"
+              value={capital}
+              onChange={(e) => setCapital(Number(e.target.value))}
+              step={10000}
+              className="w-full bg-[#1e293b] border border-[#334155] rounded px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-400"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-mono font-semibold text-slate-300 block mb-1">HORIZON:</label>
             <select
-              value={strategyType}
-              onChange={(e) => setStrategyType(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+              value={horizon}
+              onChange={(e) => setHorizon(Number(e.target.value))}
+              className="w-full bg-[#1e293b] border border-[#334155] rounded px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-400"
             >
-              <option value="sentiment_momentum">Sentiment Momentum + Trend Filter</option>
-              <option value="simple_sentiment">Pure Sentiment Threshold</option>
+              <option value={1}>1 Trading Day</option>
+              <option value={5}>5 Trading Days</option>
+              <option value={10}>10 Trading Days</option>
             </select>
           </div>
 
-          {/* Capital */}
-          <div className="space-y-1">
-            <label className="text-xs font-mono text-slate-400">Initial Capital (INR)</label>
-            <input
-              type="number"
-              value={initialCapital}
-              onChange={(e) => setInitialCapital(Number(e.target.value))}
-              className="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
-            />
+          <div>
+            <label className="text-xs font-mono font-semibold text-slate-300 block mb-1">STRATEGY TYPE:</label>
+            <select
+              value={strategy}
+              onChange={(e) => setStrategy(e.target.value)}
+              className="w-full bg-[#1e293b] border border-[#334155] rounded px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-400"
+            >
+              <option value="threshold_filtered">Trend + Rebound Filtered</option>
+              <option value="long_only">Long Only Momentum</option>
+              <option value="long_short">Long / Short Regime</option>
+            </select>
           </div>
 
-          {/* Entry Sentiment Threshold */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">Entry Sentiment</span>
-              <span className="text-emerald-400 font-bold">+{entryThreshold.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min="0.0"
-              max="0.5"
-              step="0.05"
-              value={entryThreshold}
-              onChange={(e) => setEntryThreshold(Number(e.target.value))}
-              className="w-full accent-cyan-500 cursor-pointer"
-            />
-          </div>
-
-          {/* Exit Sentiment Threshold */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">Exit Sentiment</span>
-              <span className="text-rose-400 font-bold">{exitThreshold.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min="-0.5"
-              max="0.1"
-              step="0.05"
-              value={exitThreshold}
-              onChange={(e) => setExitThreshold(Number(e.target.value))}
-              className="w-full accent-cyan-500 cursor-pointer"
-            />
-          </div>
-
-          {/* Execution Friction */}
-          <div className="grid grid-cols-2 gap-2 text-xs font-mono text-slate-400">
-            <div>
-              <span>Brokerage (bps)</span>
-              <div className="text-white font-bold mt-0.5">{(transactionCost * 10000).toFixed(0)} bps</div>
-            </div>
-            <div>
-              <span>Slippage (bps)</span>
-              <div className="text-white font-bold mt-0.5">{(slippage * 10000).toFixed(0)} bps</div>
+          <div>
+            <label className="text-xs font-mono font-semibold text-slate-300 block mb-1">FRICTION (BPS):</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={feeBps}
+                onChange={(e) => setFeeBps(Number(e.target.value))}
+                title="Brokerage BPS"
+                className="w-1/2 bg-[#1e293b] border border-[#334155] rounded px-2 py-2 text-xs font-mono text-slate-100 text-center"
+              />
+              <input
+                type="number"
+                value={slippageBps}
+                onChange={(e) => setSlippageBps(Number(e.target.value))}
+                title="Slippage BPS"
+                className="w-1/2 bg-[#1e293b] border border-[#334155] rounded px-2 py-2 text-xs font-mono text-slate-100 text-center"
+              />
             </div>
           </div>
 
-          <button
-            onClick={handleRunBacktest}
-            disabled={backtestMutation.isPending}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-500 hover:from-cyan-500 hover:to-sky-400 text-slate-950 font-mono font-bold text-xs shadow-md transition-all disabled:opacity-50"
-          >
-            <Play className={`w-3.5 h-3.5 fill-current ${backtestMutation.isPending ? 'animate-spin' : ''}`} />
-            <span>{backtestMutation.isPending ? 'Simulating Strategy...' : 'Execute Backtest'}</span>
-          </button>
-        </div>
-
-        {/* Right 3 Columns: Backtest Performance Dashboard */}
-        <div className="lg:col-span-3 space-y-6">
-          {activeBacktest ? (
-            <>
-              {/* Scorecard KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">Strategy Return</div>
-                  <div
-                    className={`text-lg font-bold mt-1 ${
-                      activeBacktest.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    {activeBacktest.total_return >= 0 ? '+' : ''}
-                    {activeBacktest.total_return.toFixed(2)}%
-                  </div>
-                  <div className="text-[9px] text-slate-500">
-                    Bench: {activeBacktest.benchmark_return ? `${activeBacktest.benchmark_return.toFixed(1)}%` : '—'}
-                  </div>
-                </div>
-
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">CAGR</div>
-                  <div className="text-lg font-bold text-white mt-1">
-                    {activeBacktest.cagr ? `${activeBacktest.cagr.toFixed(2)}%` : '—'}
-                  </div>
-                  <div className="text-[9px] text-slate-500">Annualized</div>
-                </div>
-
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">Sharpe Ratio</div>
-                  <div className="text-lg font-bold text-cyan-400 mt-1">
-                    {activeBacktest.sharpe_ratio ? activeBacktest.sharpe_ratio.toFixed(2) : '—'}
-                  </div>
-                  <div className="text-[9px] text-slate-500">Rf = 6.0% (India)</div>
-                </div>
-
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">Max Drawdown</div>
-                  <div className="text-lg font-bold text-rose-400 mt-1">
-                    {activeBacktest.max_drawdown ? `${activeBacktest.max_drawdown.toFixed(2)}%` : '0.00%'}
-                  </div>
-                  <div className="text-[9px] text-slate-500">Peak-to-Trough</div>
-                </div>
-
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">Win Rate</div>
-                  <div className="text-lg font-bold text-emerald-400 mt-1">
-                    {activeBacktest.win_rate ? `${activeBacktest.win_rate.toFixed(1)}%` : '—'}
-                  </div>
-                  <div className="text-[9px] text-slate-500">{activeBacktest.total_trades} Total Trades</div>
-                </div>
-
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 p-3 rounded-xl">
-                  <div className="text-[10px] text-slate-400 uppercase">Profit Factor</div>
-                  <div className="text-lg font-bold text-amber-400 mt-1">
-                    {activeBacktest.profit_factor ? activeBacktest.profit_factor.toFixed(2) : '—'}
-                  </div>
-                  <div className="text-[9px] text-slate-500">Gross Gain / Loss</div>
-                </div>
-              </div>
-
-              {/* Equity Curve vs Benchmark Chart */}
-              <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-                  <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                    Mark-to-Market Equity Curve vs Buy & Hold Benchmark
-                  </span>
-                  <div className="flex items-center gap-4 text-xs font-mono">
-                    <span className="text-cyan-400 font-bold">• Sentiment Strategy</span>
-                    <span className="text-slate-400">• Buy & Hold Benchmark</span>
-                  </div>
-                </div>
-
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={activeBacktest.equity_curve} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                      <XAxis
-                        dataKey="date"
-                        stroke="#64748b"
-                        fontSize={11}
-                        tickFormatter={(val) => val.slice(5)}
-                      />
-                      <YAxis
-                        domain={['auto', 'auto']}
-                        stroke="#64748b"
-                        fontSize={11}
-                        tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                      />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px' }}
-                        formatter={(val: any, name: any) => [`₹${Number(val).toLocaleString()}`, name]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="strategy_equity"
-                        stroke="#38bdf8"
-                        strokeWidth={2.5}
-                        dot={false}
-                        name="Strategy Equity"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="benchmark_equity"
-                        stroke="#64748b"
-                        strokeWidth={1.5}
-                        strokeDasharray="4 4"
-                        dot={false}
-                        name="Benchmark (Buy & Hold)"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Drawdown Series Chart */}
-              {activeBacktest.drawdown_series && (
-                <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                    <span className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider">
-                      Underwater Drawdown Profile (%)
-                    </span>
-                  </div>
-                  <div className="h-36 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={activeBacktest.drawdown_series} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                        <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickFormatter={(val) => val.slice(5)} />
-                        <YAxis stroke="#64748b" fontSize={10} tickFormatter={(val) => `${val}%`} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }}
-                          formatter={(val: any) => [`${val}%`, 'Drawdown']}
-                        />
-                        <Area type="monotone" dataKey="drawdown" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.3} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-12 text-center text-slate-500 font-mono text-xs">
-              No backtest selected. Choose a stock and click "Execute Backtest".
-            </div>
-          )}
+          <div>
+            <button
+              onClick={() => runSimulation()}
+              disabled={running}
+              className="w-full py-2 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <Play className={`w-3.5 h-3.5 ${running ? 'animate-spin' : ''}`} />
+              {running ? 'Simulating...' : 'Run Backtest'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Trade History Ledger Table */}
-      {trades.length > 0 && (
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
-              Executed Trade History & Execution Audit ({trades.length} Trades)
-            </span>
+      {result && (
+        <>
+          {/* Key Metric Highlights */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">TOTAL RETURN</div>
+              <div className={`text-lg font-bold font-mono ${result.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {result.total_return_pct >= 0 ? `+${result.total_return_pct}%` : `${result.total_return_pct}%`}
+              </div>
+              <div className="text-[10px] text-slate-400">Benchmark: {result.benchmark_return_pct}%</div>
+            </div>
+
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">FINAL EQUITY</div>
+              <div className="text-lg font-bold font-mono text-slate-100">
+                ₹{result.final_equity.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-slate-400">Initial: ₹{result.initial_capital.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">SHARPE RATIO</div>
+              <div className="text-lg font-bold font-mono text-sky-400">
+                {result.sharpe_ratio}
+              </div>
+              <div className="text-[10px] text-slate-400">Sortino: {result.sortino_ratio}</div>
+            </div>
+
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">MAX DRAWDOWN</div>
+              <div className="text-lg font-bold font-mono text-rose-400">
+                {result.max_drawdown_pct}%
+              </div>
+              <div className="text-[10px] text-slate-400">Peak-to-Trough</div>
+            </div>
+
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">WIN RATE</div>
+              <div className="text-lg font-bold font-mono text-emerald-400">
+                {result.win_rate_pct}%
+              </div>
+              <div className="text-[10px] text-slate-400">Profit Factor: {result.profit_factor}</div>
+            </div>
+
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
+              <div className="text-[11px] font-mono text-slate-400">TOTAL TRADES</div>
+              <div className="text-lg font-bold font-mono text-slate-100">
+                {result.total_trades}
+              </div>
+              <div className="text-[10px] text-slate-400">{result.start_date} to {result.end_date}</div>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
-                  <th className="py-2.5 px-3">Symbol</th>
-                  <th className="py-2.5 px-3">Entry Date</th>
-                  <th className="py-2.5 px-3">Exit Date</th>
-                  <th className="py-2.5 px-3">Shares</th>
-                  <th className="py-2.5 px-3">Entry Price</th>
-                  <th className="py-2.5 px-3">Exit Price</th>
-                  <th className="py-2.5 px-3">Net PnL (INR)</th>
-                  <th className="py-2.5 px-3">Return %</th>
-                  <th className="py-2.5 px-3">Exit Reason</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {trades.map((t, idx) => (
-                  <tr key={idx} className="hover:bg-slate-900/60 transition-colors">
-                    <td className="py-2 px-3 font-bold text-white">{t.symbol}</td>
-                    <td className="py-2 px-3 text-slate-400">{t.entry_date.split('T')[0]}</td>
-                    <td className="py-2 px-3 text-slate-400">{t.exit_date.split('T')[0]}</td>
-                    <td className="py-2 px-3">{t.shares}</td>
-                    <td className="py-2 px-3">₹{t.entry_price.toFixed(2)}</td>
-                    <td className="py-2 px-3">₹{t.exit_price.toFixed(2)}</td>
-                    <td
-                      className={`py-2 px-3 font-bold ${
-                        t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {t.pnl >= 0 ? '+' : ''}₹{t.pnl.toFixed(2)}
-                    </td>
-                    <td
-                      className={`py-2 px-3 font-bold ${
-                        t.return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {t.return_pct >= 0 ? '+' : ''}
-                      {t.return_pct.toFixed(2)}%
-                    </td>
-                    <td className="py-2 px-3 text-slate-400 text-[11px]">{t.exit_reason}</td>
+          {/* Equity Curve Chart vs Benchmark */}
+          <div className="bg-[#0f172a] border border-[#334155] rounded-lg p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200">
+                Portfolio Equity Curve vs Buy & Hold Benchmark (₹)
+              </h2>
+              <span className="text-xs text-slate-400 font-mono">Net of Brokerage & Slippage</span>
+            </div>
+
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={result.equity_curve}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 10 }} />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }}
+                    formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, 'Equity']}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Line
+                    type="monotone"
+                    name="ML Strategy Portfolio"
+                    dataKey="portfolio"
+                    stroke="#38bdf8"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    name="Buy & Hold Benchmark"
+                    dataKey="benchmark"
+                    stroke="#64748b"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Drawdown Curve Chart */}
+          <div className="bg-[#0f172a] border border-[#334155] rounded-lg p-5">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200 mb-4">
+              Historical Drawdown Profile (%)
+            </h2>
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={result.equity_curve}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} domain={[-40, 0]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }}
+                    formatter={(val: any) => [`${val}%`, 'Drawdown']}
+                  />
+                  <Area type="monotone" dataKey="drawdown_pct" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Trade Execution Log */}
+          <div className="bg-[#0f172a] border border-[#334155] rounded-lg p-5">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200 mb-3">
+              Executed Trades Log (Recent Order Activity)
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#1e293b] text-slate-400 border-b border-[#334155]">
+                  <tr>
+                    <th className="py-2 px-3">DATE</th>
+                    <th className="py-2 px-3">ACTION</th>
+                    <th className="py-2 px-3">PRICE</th>
+                    <th className="py-2 px-3">QUANTITY</th>
+                    <th className="py-2 px-3 text-right">TOTAL CASH IMPACT</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#1e293b]">
+                  {result.trades.map((t: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-[#1e293b]/40">
+                      <td className="py-2 px-3 text-slate-300">{t.date}</td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            t.action === 'BUY'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                              : 'bg-rose-950 text-rose-400 border border-rose-800'
+                          }`}
+                        >
+                          {t.action}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-200">₹{t.price}</td>
+                      <td className="py-2 px-3 text-slate-300">{t.shares}</td>
+                      <td className="py-2 px-3 text-right font-bold text-slate-100">
+                        ₹{(t.cost || t.proceeds)?.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
-
-      {/* Assumptions & Methodological Transparency Note */}
-      <div className="bg-[#0a0f1d] border border-slate-800/80 rounded-xl p-4 text-xs font-mono text-slate-400 space-y-1">
-        <div className="text-cyan-400 font-bold uppercase flex items-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-cyan-400" />
-          Execution Methodology & Look-Ahead Bias Safeguards
-        </div>
-        <p className="leading-relaxed">
-          Signals generated at end of trading session $t$ are scheduled for execution at session $t+1$ Open.
-          Every trade incorporates a slippage deduction of {(slippage * 10000).toFixed(0)} bps and an exchange/brokerage transaction fee of {(transactionCost * 10000).toFixed(0)} bps.
-          Simulations are strictly quantitative research models and do not connect to live money trading accounts.
-        </p>
-      </div>
     </div>
   );
 };
+

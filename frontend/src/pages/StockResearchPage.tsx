@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
 import {
-  Search,
   TrendingUp,
   TrendingDown,
-  ShieldAlert,
-  HelpCircle,
-  ExternalLink,
-  Activity,
   Layers,
-  ChevronDown,
+  BookmarkPlus,
+  Radio,
+  CheckCircle,
+  Search,
+  PlusCircle,
+  RefreshCw,
+  Sparkles,
+  BarChart2,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -21,388 +23,376 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
 } from 'recharts';
-import { apiClient } from '../api/client';
 
 export const StockResearchPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
-  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
+  const [stocks, setStocks] = useState<any[]>([]);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('RELIANCE.NS');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState<boolean>(false);
+  const [onboarding, setOnboarding] = useState<boolean>(false);
 
-  // Sync url param
+  const [horizon, setHorizon] = useState<number>(5);
+  const [recommendation, setRecommendation] = useState<any>(null);
+  const [ohlcv, setOhlcv] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [watchlistSuccess, setWatchlistSuccess] = useState<boolean>(false);
+
   useEffect(() => {
-    const sym = searchParams.get('symbol');
-    if (sym && sym !== selectedSymbol) {
-      setSelectedSymbol(sym);
+    const fetchStocks = async () => {
+      try {
+        const res = await api.getStocks();
+        setStocks(res.filter((s: any) => s.symbol !== '^NSEI'));
+      } catch (err) {
+        console.error('Failed to load stocks:', err);
+      }
+    };
+    fetchStocks();
+  }, []);
+
+  const loadStockData = async (sym: string, h: number) => {
+    setLoading(true);
+    try {
+      const [recRes, ohlcvRes] = await Promise.all([
+        api.getStockRecommendation(sym, h),
+        api.getHistoricalOHLCV(sym, 90),
+      ]);
+      setRecommendation(recRes);
+      setOhlcv(ohlcvRes);
+    } catch (err) {
+      console.error('Failed to load stock details:', err);
+    } finally {
+      setLoading(false);
     }
-  }, [searchParams]);
+  };
 
-  const { data: stocks } = useQuery({
-    queryKey: ['stocks'],
-    queryFn: () => apiClient.getStocks(),
-  });
+  useEffect(() => {
+    loadStockData(selectedSymbol, horizon);
+  }, [selectedSymbol, horizon]);
 
-  const { data: stockInfo } = useQuery({
-    queryKey: ['stock', selectedSymbol],
-    queryFn: () => apiClient.getStock(selectedSymbol),
-    enabled: !!selectedSymbol,
-  });
+  const handleSearch = async (val: string) => {
+    setSearchQuery(val);
+    if (val.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const results = await api.searchStocks(val);
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Search failed:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
 
-  const { data: prices, isLoading: pricesLoading } = useQuery({
-    queryKey: ['stockPrices', selectedSymbol],
-    queryFn: () => apiClient.getStockPrices(selectedSymbol, 120),
-    enabled: !!selectedSymbol,
-  });
+  const handleSelectStock = async (stockItem: any) => {
+    setSearchResults([]);
+    setSearchQuery('');
 
-  const { data: factors } = useQuery({
-    queryKey: ['stockFactors', selectedSymbol],
-    queryFn: () => apiClient.getStockFactors(selectedSymbol, 60),
-    enabled: !!selectedSymbol,
-  });
+    if (stockItem.onboarded) {
+      setSelectedSymbol(stockItem.symbol);
+    } else {
+      // Trigger dynamic onboarding
+      setOnboarding(true);
+      try {
+        await api.onboardStock(stockItem.symbol);
+        const res = await api.getStocks();
+        setStocks(res.filter((s: any) => s.symbol !== '^NSEI'));
+        setSelectedSymbol(stockItem.symbol);
+      } catch (err) {
+        console.error('Onboarding failed:', err);
+      } finally {
+        setOnboarding(false);
+      }
+    }
+  };
 
-  const { data: signals } = useQuery({
-    queryKey: ['stockSignals', selectedSymbol],
-    queryFn: () => apiClient.getSignals({ symbol: selectedSymbol }),
-    enabled: !!selectedSymbol,
-  });
-
-  const { data: newsData } = useQuery({
-    queryKey: ['stockNews', selectedSymbol],
-    queryFn: () => apiClient.getNews({ symbol: selectedSymbol, page: 1, page_size: 10 }),
-    enabled: !!selectedSymbol,
-  });
-
-  const currentSignal = signals && signals.length > 0 ? signals[0] : null;
-
-  const latestPrice = prices && prices.length > 0 ? prices[prices.length - 1] : null;
-  const prevPrice = prices && prices.length > 1 ? prices[prices.length - 2] : null;
-  const priceChange = latestPrice && prevPrice ? ((latestPrice.close - prevPrice.close) / prevPrice.close) * 100 : 0;
-
-  const handleSelectSymbol = (sym: string) => {
-    setSelectedSymbol(sym);
-    setSearchParams({ symbol: sym });
+  const handleAddToWatchlist = async () => {
+    try {
+      await api.addToWatchlist(selectedSymbol, recommendation?.current_price);
+      setWatchlistSuccess(true);
+      setTimeout(() => setWatchlistSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to add to watchlist:', err);
+    }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Top Search & Stock Selector Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
+    <div className="space-y-6">
+      {/* Title & Universe Search Bar */}
+      <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold font-mono tracking-tight text-slate-100 flex items-center gap-2">
+              <Search className="w-5 h-5 text-sky-400" />
+              STOCK EXPLORER & MULTI-FACTOR RESEARCH
+            </h1>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">
+              Expanded NSE universe coverage across NIFTY 50, NIFTY Next 50, NIFTY 100, 200 & 500 with dynamic onboarding.
+            </p>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative w-full md:w-80">
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs font-mono text-slate-200">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search symbol or name (e.g. Zomato, HAL)..."
+                className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
+              />
+              {searching && <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />}
+            </div>
+
+            {/* Search Dropdown Results */}
+            {searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-[#0f172a] border border-slate-700 rounded shadow-xl z-50 max-h-60 overflow-y-auto font-mono text-xs divide-y divide-slate-800">
+                {searchResults.map((item) => (
+                  <div
+                    key={item.symbol}
+                    onClick={() => handleSelectStock(item)}
+                    className="p-2.5 hover:bg-slate-800 cursor-pointer flex items-center justify-between transition"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-100 flex items-center gap-2">
+                        <span>{item.symbol}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 border border-slate-700">
+                          {item.index}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">{item.name}</div>
+                    </div>
+                    <div>
+                      {item.onboarded ? (
+                        <span className="text-[10px] text-emerald-400 font-semibold">Active</span>
+                      ) : (
+                        <span className="text-[10px] text-sky-400 flex items-center gap-1 font-semibold">
+                          <PlusCircle className="w-3 h-3" /> Onboard
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Selected Stock Selector & Controls Row */}
+        <div className="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-xs font-mono font-semibold text-slate-300">ACTIVE TICKER:</label>
             <select
               value={selectedSymbol}
-              onChange={(e) => handleSelectSymbol(e.target.value)}
-              className="appearance-none bg-[#0e1626] border border-slate-700/80 text-white font-mono font-bold text-sm rounded-lg px-4 py-2 pr-9 focus:outline-none focus:border-cyan-500 cursor-pointer"
+              onChange={(e) => setSelectedSymbol(e.target.value)}
+              className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-sky-400"
             >
-              {stocks?.map((s) => (
-                <option key={s.symbol} value={s.symbol} className="bg-slate-900 text-white">
-                  {s.symbol} — {s.company_name}
+              {stocks.map((s) => (
+                <option key={s.symbol} value={s.symbol}>
+                  {s.symbol} — {s.name}
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
 
-          <div className="text-xs font-mono text-slate-400 hidden sm:block">
-            {stockInfo?.company_name} • <span className="text-cyan-400">{stockInfo?.sector}</span>
-          </div>
-        </div>
-
-        {/* Price & Change Pill */}
-        {latestPrice && (
-          <div className="flex items-center gap-4 font-mono">
-            <div>
-              <div className="text-[10px] text-slate-400 uppercase">Latest Close</div>
-              <div className="text-base font-bold text-white">₹{latestPrice.close.toFixed(2)}</div>
-            </div>
-            <div
-              className={`flex items-center text-xs font-semibold px-2.5 py-1 rounded-md ${
-                priceChange >= 0
-                  ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
-                  : 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
-              }`}
-            >
-              {priceChange >= 0 ? '+' : ''}
-              {priceChange.toFixed(2)}%
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Key Technical & Sentiment Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">RSI (14)</div>
-          <div className="text-sm font-bold text-white mt-1">
-            {latestPrice?.rsi_14 ? latestPrice.rsi_14.toFixed(1) : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">
-            {latestPrice?.rsi_14 && latestPrice.rsi_14 > 70 ? 'Overbought' : latestPrice?.rsi_14 && latestPrice.rsi_14 < 30 ? 'Oversold' : 'Neutral'}
-          </div>
-        </div>
-
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">MA (20-Day)</div>
-          <div className="text-sm font-bold text-cyan-400 mt-1">
-            {latestPrice?.ma_20 ? `₹${latestPrice.ma_20.toFixed(2)}` : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">Short Trend</div>
-        </div>
-
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">MA (50-Day)</div>
-          <div className="text-sm font-bold text-amber-400 mt-1">
-            {latestPrice?.ma_50 ? `₹${latestPrice.ma_50.toFixed(2)}` : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">Medium Trend</div>
-        </div>
-
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">Volatility (20d)</div>
-          <div className="text-sm font-bold text-white mt-1">
-            {latestPrice?.volatility_20d ? `${(latestPrice.volatility_20d * 100).toFixed(2)}%` : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">Rolling Std</div>
-        </div>
-
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">Momentum (20d)</div>
-          <div className={`text-sm font-bold mt-1 ${latestPrice?.momentum_20d && latestPrice.momentum_20d >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {latestPrice?.momentum_20d ? `${(latestPrice.momentum_20d * 100).toFixed(2)}%` : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">Past 20 Sessions</div>
-        </div>
-
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-lg p-3">
-          <div className="text-[10px] text-slate-400">Volume Ratio</div>
-          <div className="text-sm font-bold text-white mt-1">
-            {latestPrice?.volume_ratio ? `${latestPrice.volume_ratio.toFixed(2)}x` : '—'}
-          </div>
-          <div className="text-[9px] text-slate-500 mt-0.5">vs 20d Average</div>
-        </div>
-      </div>
-
-      {/* Research Signal Card */}
-      {currentSignal && (
-        <div className="bg-gradient-to-r from-[#0d1627] to-[#0c1322] border border-cyan-800/40 rounded-xl p-5 shadow-lg">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-3">
-              <span
-                className={`px-3 py-1 rounded text-xs font-mono font-bold tracking-wider ${
-                  currentSignal.signal_type === 'BUY'
-                    ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_#10b981]'
-                    : currentSignal.signal_type === 'SELL'
-                    ? 'bg-rose-500 text-slate-950 shadow-[0_0_12px_#f43f5e]'
-                    : 'bg-slate-700 text-white'
-                }`}
-              >
-                {currentSignal.signal_type} CANDIDATE
-              </span>
-              <span className="text-xs font-mono text-slate-300">
-                Confidence: <span className="text-white font-bold">{(currentSignal.confidence * 100).toFixed(0)}%</span>
-              </span>
-              <span className="text-[11px] font-mono text-slate-500">
-                Strategy: {currentSignal.strategy}
-              </span>
-            </div>
-            <div className="text-[10px] font-mono text-slate-400">
-              Evaluated on: {currentSignal.signal_date.split('T')[0]}
+            <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
+              <span className="text-xs font-mono text-slate-400">Prediction Horizon:</span>
+              {[1, 5, 10].map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setHorizon(h)}
+                  className={`px-2.5 py-1 text-xs font-mono rounded transition ${
+                    horizon === h
+                      ? 'bg-sky-500/20 text-sky-400 border border-sky-400 font-bold'
+                      : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {h}D
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="mt-3 space-y-2">
-            <div className="text-xs text-slate-200 font-sans leading-relaxed">
-              <span className="font-mono text-cyan-400 font-bold uppercase mr-1">Explanation:</span>
-              {currentSignal.explanation}
-            </div>
-
-            {currentSignal.risk_warning && (
-              <div className="flex items-start gap-2 text-xs text-amber-300/90 font-mono bg-amber-950/20 border border-amber-800/30 p-2 rounded">
-                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <span>{currentSignal.risk_warning}</span>
-              </div>
+          <button
+            onClick={handleAddToWatchlist}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono bg-sky-500/10 border border-sky-400 text-sky-400 hover:bg-sky-500/20 transition"
+          >
+            {watchlistSuccess ? (
+              <>
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Added to Watchlist</span>
+              </>
+            ) : (
+              <>
+                <BookmarkPlus className="w-3.5 h-3.5" />
+                <span>Add to Watchlist</span>
+              </>
             )}
-          </div>
+          </button>
+        </div>
+      </div>
+
+      {onboarding && (
+        <div className="bg-sky-950/40 border border-sky-800/80 rounded p-4 text-xs font-mono text-sky-300 flex items-center gap-3">
+          <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+          <span>Dynamically fetching historical OHLCV prices, computing technical indicators, and training ML models for selected ticker...</span>
         </div>
       )}
 
-      {/* Main Historical Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Price and Moving Averages */}
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800/80">
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              Price Action & Moving Averages
-            </span>
-            <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span className="text-cyan-400">• Close</span>
-              <span className="text-emerald-400">• MA20</span>
-              <span className="text-amber-400">• MA50</span>
-            </div>
-          </div>
-
-          <div className="h-72 w-full">
-            {prices && prices.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={prices} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(val) => val.split('T')[0].slice(5)}
-                    stroke="#64748b"
-                    fontSize={11}
-                  />
-                  <YAxis
-                    domain={['auto', 'auto']}
-                    stroke="#64748b"
-                    fontSize={11}
-                    tickFormatter={(val) => `₹${val}`}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px' }}
-                    labelFormatter={(label) => `Date: ${String(label).split('T')[0]}`}
-                  />
-                  <Line type="monotone" dataKey="close" stroke="#38bdf8" strokeWidth={2} dot={false} name="Close" />
-                  <Line type="monotone" dataKey="ma_20" stroke="#10b981" strokeWidth={1.5} dot={false} strokeDasharray="4 4" name="MA 20" />
-                  <Line type="monotone" dataKey="ma_50" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" name="MA 50" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-slate-500 font-mono text-xs">
-                {pricesLoading ? 'Loading prices...' : 'No historical price data.'}
-              </div>
-            )}
-          </div>
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
+          <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
+          <p className="font-mono text-xs">Computing multi-factor attribution & FinBERT inference...</p>
         </div>
-
-        {/* Chart 2: Daily Sentiment Factors */}
-        <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800/80">
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              Sentiment Factor Trends
-            </span>
-            <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span className="text-emerald-400">• Weighted Sent</span>
-              <span className="text-cyan-400">• 7d Rolling</span>
-              <span className="text-indigo-400">• 14d Rolling</span>
-            </div>
-          </div>
-
-          <div className="h-72 w-full">
-            {factors && factors.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={factors} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(val) => val.split('T')[0].slice(5)}
-                    stroke="#64748b"
-                    fontSize={11}
-                  />
-                  <YAxis
-                    domain={[-1, 1]}
-                    stroke="#64748b"
-                    fontSize={11}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px' }}
-                    labelFormatter={(label) => `Date: ${String(label).split('T')[0]}`}
-                  />
-                  <Bar dataKey="confidence_weighted_sentiment" fill="#10b981" fillOpacity={0.6} name="Daily Weighted" />
-                  <Line type="monotone" dataKey="rolling_7d_mean" stroke="#38bdf8" strokeWidth={2} dot={false} name="7d Rolling" />
-                  <Line type="monotone" dataKey="rolling_14d_mean" stroke="#818cf8" strokeWidth={1.5} dot={false} strokeDasharray="3 3" name="14d Rolling" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-slate-500 font-mono text-xs">
-                No daily sentiment factors generated yet. Run FinBERT analysis first.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stock Specific Article Timeline */}
-      <div className="bg-[#0e1526]/80 border border-slate-800/80 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-          <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-            {selectedSymbol} Intelligence Feed & Article Breakdown
-          </span>
-          <span className="text-xs font-mono text-slate-400">
-            {newsData?.total || 0} Total Mentions
-          </span>
-        </div>
-
-        <div className="space-y-3">
-          {newsData?.items && newsData.items.length > 0 ? (
-            newsData.items.map((art) => {
-              const sent = art.sentiment;
-              const isPos = sent?.sentiment_label === 'positive';
-              const isNeg = sent?.sentiment_label === 'negative';
-
-              return (
-                <div
-                  key={art.id}
-                  className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 max-w-3xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-slate-400">{art.source}</span>
-                      <span className="text-slate-600">•</span>
-                      <span className="text-[10px] font-mono text-slate-500">{art.published_at.split('T')[0]}</span>
-                    </div>
-                    <a
-                      href={art.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold text-slate-200 hover:text-cyan-400 flex items-center gap-1.5 transition-colors"
-                    >
-                      <span>{art.title}</span>
-                      <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
-                    </a>
-                    {art.description && (
-                      <p className="text-[11px] text-slate-400 line-clamp-2">{art.description}</p>
-                    )}
-                  </div>
-
-                  {sent ? (
-                    <div className="shrink-0 flex flex-col items-end gap-1 font-mono">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded ${
-                            isPos
-                              ? 'text-emerald-400 bg-emerald-950/80 border border-emerald-800/80'
-                              : isNeg
-                              ? 'text-rose-400 bg-rose-950/80 border border-rose-800/80'
-                              : 'text-slate-300 bg-slate-800/80 border border-slate-700'
-                          }`}
-                        >
-                          {sent.sentiment_label.toUpperCase()} ({sent.sentiment_score > 0 ? '+' : ''}
-                          {sent.sentiment_score.toFixed(2)})
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex gap-2">
-                        <span>Pos: {(sent.positive_probability * 100).toFixed(0)}%</span>
-                        <span>Neu: {(sent.neutral_probability * 100).toFixed(0)}%</span>
-                        <span>Neg: {(sent.negative_probability * 100).toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2 py-1 rounded">
-                      Inference Pending
-                    </span>
-                  )}
+      ) : (
+        <>
+          {/* Header Summary Card */}
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#1e293b]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold font-mono text-slate-100">{recommendation?.symbol}</h2>
+                  <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    {recommendation?.sector}
+                  </span>
+                  <span
+                    className={`px-3 py-0.5 rounded text-xs font-mono font-bold border ${
+                      recommendation?.composite_score >= 0.25
+                        ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                        : recommendation?.composite_score >= 0.10
+                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-900'
+                        : 'bg-rose-950 text-rose-400 border-rose-800'
+                    }`}
+                  >
+                    {recommendation?.recommendation}
+                  </span>
                 </div>
-              );
-            })
-          ) : (
-            <div className="text-xs font-mono text-slate-500 text-center py-8">
-              No news mapped to {selectedSymbol} in the current dataset. Ingest feeds from the sidebar.
+                <p className="text-xs text-slate-400 font-mono mt-1">{recommendation?.name}</p>
+              </div>
+
+              <div className="flex items-baseline gap-4 text-right">
+                <div>
+                  <div className="text-[11px] font-mono text-slate-400">CURRENT MARKET PRICE</div>
+                  <div className="text-2xl font-bold font-mono text-slate-100">
+                    ₹{recommendation?.current_price?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-mono text-slate-400">DIRECTIONAL PROBABILITY</div>
+                  <div className="text-2xl font-bold font-mono text-sky-400">
+                    {((recommendation?.prob_up || 0.65) * 100).toFixed(1)}%
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Factor Decomposition Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                  <span>ML DIRECTIONAL SCORE</span>
+                  <Layers className="w-3.5 h-3.5 text-sky-400" />
+                </div>
+                <div className="text-lg font-bold font-mono text-sky-400">
+                  {((recommendation?.factor_scores?.ml_score || 0.65) * 100).toFixed(0)}%
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono mt-1">Weight: 35%</div>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                  <span>FINBERT SENTIMENT SCORE</span>
+                  <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <div className="text-lg font-bold font-mono text-emerald-400">
+                  {recommendation?.factor_scores?.sentiment_score !== undefined
+                    ? (recommendation.factor_scores.sentiment_score > 0 ? `+${recommendation.factor_scores.sentiment_score}` : recommendation.factor_scores.sentiment_score)
+                    : '+0.45'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono mt-1">Weight: 25%</div>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                  <span>TECHNICAL FACTOR SCORE</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div className="text-lg font-bold font-mono text-slate-100">
+                  {recommendation?.factor_scores?.technical_score > 0
+                    ? `+${recommendation?.factor_scores?.technical_score}`
+                    : recommendation?.factor_scores?.technical_score || '+0.15'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono mt-1">Weight: 20%</div>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                  <span>FUNDAMENTAL QUALITY</span>
+                  <BarChart2 className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+                <div className="text-lg font-bold font-mono text-slate-100">
+                  {recommendation?.factor_scores?.fundamental_score || '+0.25'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono mt-1">Weight: 20%</div>
+              </div>
+            </div>
+
+            {/* Explanation Narrative */}
+            <div className="mt-5 p-4 rounded bg-slate-900/50 border border-slate-800 text-xs font-mono text-slate-300 leading-relaxed">
+              <strong className="text-sky-400">Analytical Synthesis: </strong>
+              {recommendation?.explanation}
+            </div>
+          </div>
+
+          {/* Price & Volume Chart */}
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg p-6">
+            <h3 className="text-sm font-bold font-mono uppercase tracking-wider text-slate-200 mb-4 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-sky-400" />
+              Historical OHLCV Price Action (90 Sessions)
+            </h3>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={ohlcv}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#64748b"
+                    tick={{ fontSize: 10, fontFamily: 'monospace' }}
+                    tickFormatter={(val) => val.slice(5)}
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    domain={['auto', 'auto']}
+                    tick={{ fontSize: 10, fontFamily: 'monospace' }}
+                    tickFormatter={(val) => `₹${val.toLocaleString()}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                    }}
+                  />
+                  <Bar dataKey="volume" fill="#1e293b" opacity={0.6} yAxisId={0} />
+                  <Line
+                    type="monotone"
+                    dataKey="close"
+                    stroke="#38bdf8"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Close Price"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

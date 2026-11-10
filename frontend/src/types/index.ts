@@ -1,191 +1,184 @@
 export interface Stock {
   id: number;
   symbol: string;
-  ticker: string;
-  company_name: string;
-  sector?: string;
-  aliases?: string;
-  is_active: boolean;
-  created_at: string;
+  name: string;
+  sector: string;
+  industry: string;
+  exchange: string;
+  currency: string;
+  market_cap?: number;
+  pe_ratio?: number;
+  pb_ratio?: number;
+  eps?: number;
+  dividend_yield?: number;
+  roe?: number;
+  debt_to_equity?: number;
 }
 
-export interface SentimentProbability {
-  positive: number;
-  negative: number;
-  neutral: number;
+export interface StockDetail extends Stock {
+  current_price: number | null;
+  last_updated: string | null;
+  returns_1d: number;
+  volatility_20d: number;
 }
 
-export interface SentimentResult {
-  sentiment_label: 'positive' | 'negative' | 'neutral' | 'failed' | 'pending';
-  positive_probability: number;
-  negative_probability: number;
-  neutral_probability: number;
-  sentiment_score: number;
-  model_name: string;
-  model_version: string;
-  inference_status: string;
-  inference_timestamp?: string;
-  error_message?: string;
-}
-
-export interface Article {
-  id: number;
-  title: string;
-  description?: string;
-  url: string;
-  source: string;
-  published_at: string;
-  content_fingerprint: string;
-  created_at: string;
-  sentiment?: SentimentResult;
-  mapped_stocks?: string[];
-}
-
-export interface ArticleListResponse {
-  total: number;
-  page: number;
-  page_size: number;
-  pages: number;
-  items: Article[];
-}
-
-export interface PriceBar {
+export interface OHLCVRecord {
   date: string;
   open: number;
   high: number;
   low: number;
   close: number;
+  adj_close: number;
   volume: number;
-  returns_1d?: number;
-  momentum_5d?: number;
-  momentum_20d?: number;
-  momentum_60d?: number;
-  ma_20?: number;
-  ma_50?: number;
-  rsi_14?: number;
-  macd?: number;
-  macd_signal?: number;
-  volatility_20d?: number;
-  volume_ratio?: number;
+  returns_1d: number;
 }
 
-export interface SentimentFactor {
-  date: string;
-  daily_mean_sentiment?: number;
-  confidence_weighted_sentiment?: number;
-  article_count: number;
-  bullish_count: number;
-  bearish_count: number;
-  neutral_count: number;
-  mean_positive_prob?: number;
-  mean_negative_prob?: number;
-  mean_neutral_prob?: number;
-  rolling_7d_mean?: number;
-  rolling_14d_mean?: number;
-  sentiment_momentum?: number;
-  sentiment_volatility?: number;
-  sentiment_surprise?: number;
+export interface StockRecommendation {
+  symbol: string;
+  name: string;
+  sector: string;
+  current_price: number;
+  price_timestamp: string;
+  prediction_horizon_days: number;
+  predicted_direction: string;
+  signal: string;
+  composite_score: number;
+  model_probability: number;
+  model_name: string;
+  sentiment_score: number;
+  sentiment_momentum: number;
+  risk_score: number;
+  fundamentals: {
+    pe_ratio?: number;
+    pb_ratio?: number;
+    eps?: number;
+    dividend_yield?: number;
+    roe?: number;
+    debt_to_equity?: number;
+    market_cap?: number;
+  };
+  supporting_news: Array<{
+    headline: string;
+    source: string;
+    url: string;
+    published_at: string;
+  }>;
+  explanation: string;
 }
 
-export interface ModelRun {
+export interface SentimentOverview {
+  market_sentiment_score: number;
+  market_sentiment_label: string;
+  top_positive: Array<{
+    symbol: string;
+    name: string;
+    sector: string;
+    sentiment_score: number;
+    sentiment_momentum: number;
+    article_count: number;
+  }>;
+  top_negative: Array<{
+    symbol: string;
+    name: string;
+    sector: string;
+    sentiment_score: number;
+    sentiment_momentum: number;
+    article_count: number;
+  }>;
+  all_stocks: Array<any>;
+}
+
+export interface MLModelLeaderboardItem {
   id: number;
   model_id: string;
-  model_type: string;
-  target_horizon: number;
-  validation_method: string;
-  train_samples: number;
-  test_samples: number;
-  accuracy?: number;
-  precision?: number;
-  recall?: number;
-  f1?: number;
-  roc_auc?: number;
-  feature_importance?: Record<string, number>;
+  model_name: string;
+  target_type: string;
+  horizon_days: number;
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  roc_auc: number;
+  mcc: number;
+  strategy_sharpe: number;
+  strategy_drawdown: number;
+  win_rate: number;
   created_at: string;
 }
 
-export interface TradingSignal {
-  id: number;
+export interface BacktestResult {
   symbol: string;
-  company_name: string;
-  signal_date: string;
-  signal_type: 'BUY' | 'HOLD' | 'SELL';
   strategy: string;
-  confidence: number;
-  explanation: string;
-  contributing_factors?: Record<string, any>;
-  risk_warning?: string;
-  created_at: string;
-}
-
-export interface BacktestTrade {
-  symbol: string;
-  entry_date: string;
-  exit_date: string;
-  entry_price: number;
-  exit_price: number;
-  shares: number;
-  pnl: number;
-  return_pct: number;
-  exit_reason: string;
-}
-
-export interface BacktestRun {
-  id: number;
-  backtest_id: string;
-  name: string;
-  strategy_type: string;
+  horizon_days: number;
   start_date: string;
   end_date: string;
   initial_capital: number;
   final_equity: number;
-  total_return: number;
-  benchmark_return?: number;
-  cagr?: number;
-  sharpe_ratio?: number;
-  max_drawdown?: number;
-  win_rate?: number;
+  total_return_pct: number;
+  benchmark_return_pct: number;
+  annualized_return_pct: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  max_drawdown_pct: number;
+  win_rate_pct: number;
+  profit_factor: number;
   total_trades: number;
-  profit_factor?: number;
-  equity_curve: {
+  trades: Array<{
     date: string;
-    strategy_equity: number;
-    benchmark_equity: number;
-    cash: number;
-    invested: number;
-  }[];
-  drawdown_series?: {
+    action: string;
+    price: number;
+    shares: number;
+    cost?: number;
+    proceeds?: number;
+  }>;
+  equity_curve: Array<{
     date: string;
-    drawdown: number;
-  }[];
-  config_params?: Record<string, any>;
-  trades?: BacktestTrade[];
-  created_at: string;
+    portfolio: number;
+    benchmark: number;
+    drawdown_pct: number;
+  }>;
 }
 
-export interface PipelineJob {
-  job_id: string;
-  job_type: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
-  progress_pct: number;
-  total_items: number;
-  processed_items: number;
-  message?: string;
-  error_details?: string;
-  started_at: string;
-  completed_at?: string;
+export interface PortfolioSimulationResult {
+  initial_capital: number;
+  horizon_days: number;
+  annualized_return_pct: number;
+  annualized_volatility_pct: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  diversification_score: number;
+  allocations: Array<{
+    symbol: string;
+    weight_pct: number;
+    allocated_amount: number;
+    sector: string;
+  }>;
+  sector_breakdown: Array<{
+    sector: string;
+    weight: number;
+  }>;
+  scenario_projections: Array<{
+    day: number;
+    expected: number;
+    optimistic: number;
+    pessimistic: number;
+  }>;
+  projected_outcomes: {
+    expected_final: number;
+    optimistic_final: number;
+    pessimistic_final: number;
+  };
 }
 
-export interface SystemStatus {
-  status: string;
-  environment: string;
-  database_connected: boolean;
-  total_stocks: number;
-  total_articles: number;
-  total_sentiment_analyzed: number;
-  finbert_status: 'not_downloaded' | 'downloading' | 'loading' | 'ready' | 'failed';
-  finbert_device: string;
-  finbert_model_cache: string;
-  last_ingestion_time?: string;
-  active_jobs: number;
+export interface RAGCitation {
+  source: string;
+  timestamp: string;
+  datapoints: string;
 }
+
+export interface RAGResponse {
+  query: string;
+  answer: string;
+  citations: RAGCitation[];
+}
+

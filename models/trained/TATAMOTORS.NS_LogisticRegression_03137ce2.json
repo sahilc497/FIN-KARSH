@@ -1,0 +1,43 @@
+{
+  "model_id": "TATAMOTORS.NS_LogisticRegression_03137ce2",
+  "model_name": "LogisticRegression",
+  "symbol": "TATAMOTORS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.4,
+    "balanced_accuracy": 0.4034,
+    "precision": 0.2353,
+    "recall": 0.0833,
+    "f1_score": 0.1231,
+    "mcc": -0.2521,
+    "directional_accuracy": 0.4,
+    "roc_auc": 0.2819,
+    "pr_auc": 0.3838,
+    "confusion_matrix": [
+      [
+        34,
+        13
+      ],
+      [
+        44,
+        4
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -7.82,
+    "benchmark_return_pct": -3.43,
+    "annualized_return_pct": -19.43,
+    "sharpe_ratio": -1.74,
+    "sortino_ratio": -1.96,
+    "max_drawdown_pct": -5.91,
+    "win_rate_pct": 63.64,
+    "profit_factor": 0.55,
+    "total_trades": 11
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5053,
+    "previous_day_accuracy": 0.5474,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

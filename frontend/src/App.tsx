@@ -1,41 +1,34 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DashboardLayout } from './layouts/DashboardLayout';
+import { DashboardPage } from './pages/DashboardPage';
 import { MarketOverviewPage } from './pages/MarketOverviewPage';
 import { StockResearchPage } from './pages/StockResearchPage';
-import { NewsExplorerPage } from './pages/NewsExplorerPage';
-import { MLLabPage } from './pages/MLLabPage';
+import { SentimentExplorerPage } from './pages/SentimentExplorerPage';
 import { BacktestingLabPage } from './pages/BacktestingLabPage';
-import { SystemHealthPage } from './pages/SystemHealthPage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5000,
-    },
-  },
-});
+import { PortfolioSimulatorPage } from './pages/PortfolioSimulatorPage';
+import { RAGAssistantPage } from './pages/RAGAssistantPage';
+import { WatchlistPage } from './pages/WatchlistPage';
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<MarketOverviewPage />} />
-            <Route path="research" element={<StockResearchPage />} />
-            <Route path="news" element={<NewsExplorerPage />} />
-            <Route path="ml-lab" element={<MLLabPage />} />
-            <Route path="backtesting" element={<BacktestingLabPage />} />
-            <Route path="health" element={<SystemHealthPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<DashboardLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="market" element={<MarketOverviewPage />} />
+          <Route path="stocks" element={<StockResearchPage />} />
+          <Route path="research" element={<Navigate to="/stocks" replace />} />
+          <Route path="sentiment" element={<SentimentExplorerPage />} />
+          <Route path="assistant" element={<RAGAssistantPage />} />
+          <Route path="backtesting" element={<BacktestingLabPage />} />
+          <Route path="portfolio" element={<PortfolioSimulatorPage />} />
+          <Route path="watchlist" element={<WatchlistPage />} />
+          <Route path="ml-lab" element={<Navigate to="/stocks" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 };
 

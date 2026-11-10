@@ -1,0 +1,43 @@
+{
+  "model_id": "TCS.NS_RandomForest_62a9bbf1",
+  "model_name": "RandomForest",
+  "symbol": "TCS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.3118,
+    "balanced_accuracy": 0.2899,
+    "precision": 0.4107,
+    "recall": 0.4259,
+    "f1_score": 0.4182,
+    "mcc": -0.4237,
+    "directional_accuracy": 0.3118,
+    "roc_auc": 0.3367,
+    "pr_auc": 0.4992,
+    "confusion_matrix": [
+      [
+        6,
+        33
+      ],
+      [
+        31,
+        23
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": 3.22,
+    "benchmark_return_pct": -1.34,
+    "annualized_return_pct": 8.98,
+    "sharpe_ratio": 0.28,
+    "sortino_ratio": 0.43,
+    "max_drawdown_pct": -5.96,
+    "win_rate_pct": 675.0,
+    "profit_factor": 1.1,
+    "total_trades": 4
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5806,
+    "previous_day_accuracy": 0.4731,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

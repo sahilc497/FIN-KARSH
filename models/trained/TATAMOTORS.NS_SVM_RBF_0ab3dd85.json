@@ -1,0 +1,43 @@
+{
+  "model_id": "TATAMOTORS.NS_SVM_RBF_0ab3dd85",
+  "model_name": "SVM_RBF",
+  "symbol": "TATAMOTORS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.3684,
+    "balanced_accuracy": 0.3695,
+    "precision": 0.3421,
+    "recall": 0.2708,
+    "f1_score": 0.3023,
+    "mcc": -0.2665,
+    "directional_accuracy": 0.3684,
+    "roc_auc": 0.316,
+    "pr_auc": 0.4097,
+    "confusion_matrix": [
+      [
+        22,
+        25
+      ],
+      [
+        35,
+        13
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -20.58,
+    "benchmark_return_pct": -3.43,
+    "annualized_return_pct": -45.72,
+    "sharpe_ratio": -3.15,
+    "sortino_ratio": -3.59,
+    "max_drawdown_pct": -16.43,
+    "win_rate_pct": 65.22,
+    "profit_factor": 0.45,
+    "total_trades": 23
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5053,
+    "previous_day_accuracy": 0.5474,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

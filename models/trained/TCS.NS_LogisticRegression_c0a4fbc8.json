@@ -1,0 +1,43 @@
+{
+  "model_id": "TCS.NS_LogisticRegression_c0a4fbc8",
+  "model_name": "LogisticRegression",
+  "symbol": "TCS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.3871,
+    "balanced_accuracy": 0.3939,
+    "precision": 0.4634,
+    "recall": 0.3519,
+    "f1_score": 0.4,
+    "mcc": -0.211,
+    "directional_accuracy": 0.3871,
+    "roc_auc": 0.2858,
+    "pr_auc": 0.4705,
+    "confusion_matrix": [
+      [
+        17,
+        22
+      ],
+      [
+        35,
+        19
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": 1.88,
+    "benchmark_return_pct": -1.34,
+    "annualized_return_pct": 5.16,
+    "sharpe_ratio": 0.12,
+    "sortino_ratio": 0.2,
+    "max_drawdown_pct": -5.96,
+    "win_rate_pct": 300.0,
+    "profit_factor": 1.09,
+    "total_trades": 6
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5806,
+    "previous_day_accuracy": 0.4731,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

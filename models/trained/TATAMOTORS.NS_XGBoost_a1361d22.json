@@ -1,0 +1,43 @@
+{
+  "model_id": "TATAMOTORS.NS_XGBoost_a1361d22",
+  "model_name": "XGBoost",
+  "symbol": "TATAMOTORS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.5053,
+    "balanced_accuracy": 0.5,
+    "precision": 0.5053,
+    "recall": 1.0,
+    "f1_score": 0.6713,
+    "mcc": 0.0,
+    "directional_accuracy": 0.5053,
+    "roc_auc": 0.2859,
+    "pr_auc": 0.3849,
+    "confusion_matrix": [
+      [
+        0,
+        47
+      ],
+      [
+        0,
+        48
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -3.53,
+    "benchmark_return_pct": -3.43,
+    "annualized_return_pct": -9.09,
+    "sharpe_ratio": -0.27,
+    "sortino_ratio": -0.4,
+    "max_drawdown_pct": -5.56,
+    "win_rate_pct": 4700.0,
+    "profit_factor": 0.98,
+    "total_trades": 1
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5053,
+    "previous_day_accuracy": 0.5474,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

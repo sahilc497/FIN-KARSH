@@ -1,0 +1,43 @@
+{
+  "model_id": "TCS.NS_PyTorch_LSTM_68de5ecf",
+  "model_name": "PyTorch_LSTM",
+  "symbol": "TCS.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.3011,
+    "balanced_accuracy": 0.2771,
+    "precision": 0.4035,
+    "recall": 0.4259,
+    "f1_score": 0.4144,
+    "mcc": -0.4517,
+    "directional_accuracy": 0.3011,
+    "roc_auc": 0.2906,
+    "pr_auc": 0.4801,
+    "confusion_matrix": [
+      [
+        5,
+        34
+      ],
+      [
+        31,
+        23
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": 0.03,
+    "benchmark_return_pct": -1.34,
+    "annualized_return_pct": 0.09,
+    "sharpe_ratio": -0.04,
+    "sortino_ratio": -0.06,
+    "max_drawdown_pct": -5.96,
+    "win_rate_pct": 1350.0,
+    "profit_factor": 1.03,
+    "total_trades": 2
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5806,
+    "previous_day_accuracy": 0.4731,
+    "momentum_baseline_accuracy": 0.51
+  }
+}
