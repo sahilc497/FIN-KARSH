@@ -65,7 +65,9 @@ export const DashboardPage: React.FC = () => {
   const quotes: any[] = snapshot?.quotes || [];
   const topPos = sentimentOverview?.top_positive || quotes.slice(0, 3);
   const topNeg = sentimentOverview?.top_negative || quotes.slice(-3);
-  const recRankings: any[] = recommendations?.recommendations || [];
+  const recRankings: any[] = Array.isArray(recommendations)
+    ? recommendations
+    : (recommendations?.recommendations || recommendations?.results || (quotes.length > 0 ? quotes : []));
 
   return (
     <div className="space-y-6">
@@ -295,36 +297,73 @@ export const DashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {recRankings.slice(0, 6).map((rec: any, idx: number) => (
-                  <tr key={rec.symbol} className="hover:bg-slate-800/30 transition">
-                    <td className="py-2.5 font-bold text-sky-400">#{idx + 1}</td>
-                    <td className="py-2.5 font-medium text-slate-100">
-                      <div>{rec.symbol}</div>
-                      <div className="text-[10px] text-slate-400">{rec.name}</div>
-                    </td>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-emerald-400 h-full rounded-full"
-                            style={{ width: `${(rec.prob_up || 0.65) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[11px] text-slate-200 font-bold">
-                          {((rec.prob_up || 0.65) * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                        {rec.recommendation || 'BULLISH'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-right font-bold text-slate-100">
-                      ₹{rec.current_price?.toLocaleString('en-IN') || '2,400'}
+                {recRankings.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-500 font-mono text-xs">
+                      No model rankings available yet. Synchronize market data.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recRankings.slice(0, 6).map((rec: any, idx: number) => {
+                    const prob =
+                      rec.model_probability !== undefined
+                        ? rec.model_probability
+                        : (rec.prob_up !== undefined ? rec.prob_up : 0.65);
+                    const direction = (
+                      rec.predicted_direction ||
+                      rec.signal ||
+                      rec.recommendation ||
+                      (rec.change_pct >= 0 ? 'Bullish' : 'Bearish')
+                    );
+                    const upperDir = direction.toUpperCase();
+                    const isBull = upperDir.includes('BULL') || upperDir.includes('POS');
+                    const isBear = upperDir.includes('BEAR') || upperDir.includes('NEG');
+                    const price = rec.current_price ?? rec.price ?? 0;
+
+                    return (
+                      <tr key={rec.symbol || idx} className="hover:bg-slate-800/30 transition">
+                        <td className="py-2.5 font-bold text-sky-400">#{idx + 1}</td>
+                        <td className="py-2.5 font-medium text-slate-100">
+                          <Link to="/stocks" className="hover:text-sky-400 transition">
+                            <div className="font-semibold">{rec.symbol}</div>
+                            <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                              {rec.name || rec.symbol}
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${prob >= 0.5 ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                                style={{ width: `${Math.min(100, Math.max(5, prob * 100))}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[11px] text-slate-200 font-bold">
+                              {(prob * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isBull
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : isBear
+                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                : 'bg-slate-700 text-slate-300 border border-slate-600'
+                            }`}
+                          >
+                            {upperDir}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right font-bold text-slate-100 font-mono">
+                          ₹{price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
