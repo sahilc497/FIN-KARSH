@@ -38,6 +38,7 @@ export const StockResearchPage: React.FC = () => {
   const [ohlcv, setOhlcv] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [watchlistSuccess, setWatchlistSuccess] = useState<boolean>(false);
+  const [syncing, setSyncing] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchStocks = async () => {
@@ -64,6 +65,18 @@ export const StockResearchPage: React.FC = () => {
       console.error('Failed to load stock details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncLive = async () => {
+    setSyncing(true);
+    try {
+      await api.syncLivePrices();
+      await loadStockData(selectedSymbol, horizon);
+    } catch (err) {
+      console.error('Failed to sync live prices:', err);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -217,22 +230,34 @@ export const StockResearchPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleAddToWatchlist}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono bg-sky-500/10 border border-sky-400 text-sky-400 hover:bg-sky-500/20 transition"
-          >
-            {watchlistSuccess ? (
-              <>
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Added to Watchlist</span>
-              </>
-            ) : (
-              <>
-                <BookmarkPlus className="w-3.5 h-3.5" />
-                <span>Add to Watchlist</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSyncLive}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-50"
+              title="Fetch instantaneous live price from exchange"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              <span>{syncing ? 'Syncing...' : 'Sync Live Price'}</span>
+            </button>
+
+            <button
+              onClick={handleAddToWatchlist}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono bg-sky-500/10 border border-sky-400 text-sky-400 hover:bg-sky-500/20 transition"
+            >
+              {watchlistSuccess ? (
+                <>
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Added to Watchlist</span>
+                </>
+              ) : (
+                <>
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  <span>Add to Watchlist</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # Comprehensive Indian NSE Equity Universe (NIFTY 50, NIFTY NEXT 50, NIFTY 100, NIFTY 200, NIFTY 500)
 EXPANDED_NSE_UNIVERSE: List[Dict[str, Any]] = [
     # --- NIFTY 50 Pillar Equities ---
-    {"symbol": "RELIANCE.NS", "name": "Reliance Industries Ltd", "sector": "Energy", "index": "NIFTY 50", "pe": 24.8, "roe": 9.2, "market_cap": 17200000000000.0, "base_price": 1272.50},
+    {"symbol": "RELIANCE.NS", "name": "Reliance Industries Ltd", "sector": "Energy", "index": "NIFTY 50", "pe": 24.8, "roe": 9.2, "market_cap": 17200000000000.0, "base_price": 1339.70},
     {"symbol": "TCS.NS", "name": "Tata Consultancy Services Ltd", "sector": "Information Technology", "index": "NIFTY 50", "pe": 29.5, "roe": 48.5, "market_cap": 15100000000000.0, "base_price": 4145.00},
     {"symbol": "INFY.NS", "name": "Infosys Ltd", "sector": "Information Technology", "index": "NIFTY 50", "pe": 25.2, "roe": 31.4, "market_cap": 7800000000000.0, "base_price": 1865.00},
     {"symbol": "HDFCBANK.NS", "name": "HDFC Bank Ltd", "sector": "Financial Services", "index": "NIFTY 50", "pe": 18.6, "roe": 15.8, "market_cap": 13300000000000.0, "base_price": 1748.00},

@@ -72,6 +72,14 @@ def get_stock_detail(symbol: str, db: Session = Depends(get_db)):
         else:
             raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
 
+    # Attempt near-real-time live quote synchronization
+    from backend.collectors.yahoo_finance import YahooFinanceCollector
+    try:
+        yf_collector = YahooFinanceCollector(db)
+        yf_collector.sync_live_price(stock.symbol)
+    except Exception:
+        pass
+
     latest_price = (
         db.query(PriceHistory)
         .filter(PriceHistory.stock_id == stock.id)
@@ -99,17 +107,19 @@ def get_stock_detail(symbol: str, db: Session = Depends(get_db)):
 
 @router.post("/sync-live")
 def sync_live_prices(db: Session = Depends(get_db)):
-    """Fetches latest prices from Yahoo Finance if online, or ensures calibrated realistic prices matching Groww/NSE."""
+    """Fetches latest prices directly from Yahoo Finance live endpoint and updates database records."""
     from backend.collectors.yahoo_finance import YahooFinanceCollector
     yf_collector = YahooFinanceCollector(db)
-    stocks = yf_collector.sync_supported_stocks()
+    stocks = db.query(Stock).all()
     synced = []
     for s in stocks:
         try:
-            df = yf_collector.fetch_historical_ohlcv(s.symbol)
-            yf_collector.save_ohlcv_to_db(s.symbol, df, overwrite=True)
-            lp = db.query(PriceHistory).filter(PriceHistory.stock_id == s.id).order_by(PriceHistory.date.desc()).first()
-            synced.append({"symbol": s.symbol, "latest_price": lp.close if lp else None})
+            live_p = yf_collector.sync_live_price(s.symbol)
+            if live_p is not None:
+                synced.append({"symbol": s.symbol, "latest_price": live_p})
+            else:
+                lp = db.query(PriceHistory).filter(PriceHistory.stock_id == s.id).order_by(PriceHistory.date.desc()).first()
+                synced.append({"symbol": s.symbol, "latest_price": lp.close if lp else None})
         except Exception:
             continue
     return {"status": "success", "synced_stocks": len(synced), "quotes": synced}

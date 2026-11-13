@@ -47,6 +47,14 @@ def get_stock_recommendation(
     if not stock and any(item["symbol"] == symbol for item in manager.catalog.values()):
         manager.ensure_stock_onboarded(symbol)
 
+    # Attempt live price sync for instantaneous quote
+    from backend.collectors.yahoo_finance import YahooFinanceCollector
+    try:
+        yf_collector = YahooFinanceCollector(db)
+        yf_collector.sync_live_price(symbol)
+    except Exception:
+        pass
+
     pred_service = PredictionService(db)
     try:
         return pred_service.get_latest_recommendation(symbol, horizon_days=horizon_days)
