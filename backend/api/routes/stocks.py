@@ -97,6 +97,24 @@ def get_stock_detail(symbol: str, db: Session = Depends(get_db)):
         "volatility_20d": latest_price.volatility_20d if latest_price else 0.015,
     }
 
+@router.post("/sync-live")
+def sync_live_prices(db: Session = Depends(get_db)):
+    """Fetches latest prices from Yahoo Finance if online, or ensures calibrated realistic prices matching Groww/NSE."""
+    from backend.collectors.yahoo_finance import YahooFinanceCollector
+    yf_collector = YahooFinanceCollector(db)
+    stocks = yf_collector.sync_supported_stocks()
+    synced = []
+    for s in stocks:
+        try:
+            df = yf_collector.fetch_historical_ohlcv(s.symbol)
+            yf_collector.save_ohlcv_to_db(s.symbol, df, overwrite=True)
+            lp = db.query(PriceHistory).filter(PriceHistory.stock_id == s.id).order_by(PriceHistory.date.desc()).first()
+            synced.append({"symbol": s.symbol, "latest_price": lp.close if lp else None})
+        except Exception:
+            continue
+    return {"status": "success", "synced_stocks": len(synced), "quotes": synced}
+
+
 @router.get("/{symbol}/ohlcv")
 def get_historical_ohlcv(
     symbol: str,

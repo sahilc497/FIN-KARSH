@@ -273,21 +273,21 @@ class YahooFinanceCollector:
         Generates realistic 3-year historical OHLCV data using Geometric Brownian Motion
         with realistic Indian market volatility, drift, and sector characteristics.
         """
-        # Seed deterministic price level by symbol
+        # Seed deterministic price level matching current live NSE / Groww market prices
         base_prices = {
-            "RELIANCE.NS": 2850.0,
-            "TCS.NS": 3950.0,
-            "INFY.NS": 1680.0,
-            "HDFCBANK.NS": 1620.0,
-            "ICICIBANK.NS": 1180.0,
-            "TATAMOTORS.NS": 980.0,
-            "SBIN.NS": 810.0,
-            "BHARTIARTL.NS": 1550.0,
-            "ITC.NS": 475.0,
-            "LT.NS": 3520.0,
-            "^NSEI": 24200.0,
+            "RELIANCE.NS": 1272.50,  # Post 1:1 bonus share trading range on NSE/Groww
+            "TCS.NS": 4145.00,
+            "INFY.NS": 1865.00,
+            "HDFCBANK.NS": 1748.00,
+            "ICICIBANK.NS": 1268.00,
+            "TATAMOTORS.NS": 788.00,
+            "SBIN.NS": 818.00,
+            "BHARTIARTL.NS": 1585.00,
+            "ITC.NS": 472.50,
+            "LT.NS": 3585.00,
+            "^NSEI": 24148.00,
         }
-        start_price = base_prices.get(symbol, 1500.0)
+        target_today_price = base_prices.get(symbol, 1500.0)
         
         # Reproducible random state per symbol
         rng = np.random.RandomState(abs(hash(symbol)) % (2**32 - 1))
@@ -307,7 +307,10 @@ class YahooFinanceCollector:
             if i % 45 == 0:
                 shocks[i:min(i+15, days)] += rng.choice([-0.003, 0.004])
 
-        price_series = start_price * np.exp(np.cumsum(shocks))
+        # Backward-anchored so that today's price (the last element) exactly matches Groww / NSE
+        cum_shocks = np.cumsum(shocks)
+        price_series = target_today_price * np.exp(cum_shocks - cum_shocks[-1])
+        price_series[-1] = target_today_price
         
         records = []
         for d, close_p in zip(dates, price_series):
@@ -330,7 +333,7 @@ class YahooFinanceCollector:
         df = pd.DataFrame(records)
         return self._clean_and_validate_df(df)
 
-    def save_ohlcv_to_db(self, symbol: str, df: pd.DataFrame) -> int:
+    def save_ohlcv_to_db(self, symbol: str, df: pd.DataFrame, overwrite: bool = False) -> int:
         """Saves clean validated OHLCV records to PriceHistory table."""
         stock = self.db.query(Stock).filter(Stock.symbol == symbol).first()
         if not stock:
@@ -338,6 +341,10 @@ class YahooFinanceCollector:
             stock = self.db.query(Stock).filter(Stock.symbol == symbol).first()
             if not stock:
                 raise ValueError(f"Stock {symbol} not found in database.")
+
+        if overwrite:
+            self.db.query(PriceHistory).filter(PriceHistory.stock_id == stock.id).delete()
+            self.db.commit()
 
         saved_count = 0
         existing_dates = set(

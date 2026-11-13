@@ -1,0 +1,43 @@
+{
+  "model_id": "RELIANCE.NS_XGBoost_bb6963b8",
+  "model_name": "XGBoost",
+  "symbol": "RELIANCE.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.5484,
+    "balanced_accuracy": 0.5,
+    "precision": 0.5484,
+    "recall": 1.0,
+    "f1_score": 0.7083,
+    "mcc": 0.0,
+    "directional_accuracy": 0.5484,
+    "roc_auc": 0.5247,
+    "pr_auc": 0.6407,
+    "confusion_matrix": [
+      [
+        0,
+        42
+      ],
+      [
+        0,
+        51
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -0.17,
+    "benchmark_return_pct": -0.07,
+    "annualized_return_pct": -0.45,
+    "sharpe_ratio": -0.03,
+    "sortino_ratio": -0.05,
+    "max_drawdown_pct": -6.52,
+    "win_rate_pct": 4600.0,
+    "profit_factor": 1.02,
+    "total_trades": 1
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5484,
+    "previous_day_accuracy": 0.4194,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "model_id": "RELIANCE.NS_LogisticRegression_3242a720",
+  "model_name": "LogisticRegression",
+  "symbol": "RELIANCE.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.5806,
+    "balanced_accuracy": 0.5357,
+    "precision": 0.5667,
+    "recall": 1.0,
+    "f1_score": 0.7234,
+    "mcc": 0.2012,
+    "directional_accuracy": 0.5806,
+    "roc_auc": 0.6345,
+    "pr_auc": 0.6705,
+    "confusion_matrix": [
+      [
+        3,
+        39
+      ],
+      [
+        0,
+        51
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": -3.7,
+    "benchmark_return_pct": -0.07,
+    "annualized_return_pct": -9.72,
+    "sharpe_ratio": -0.37,
+    "sortino_ratio": -0.64,
+    "max_drawdown_pct": -9.47,
+    "win_rate_pct": 880.0,
+    "profit_factor": 0.97,
+    "total_trades": 5
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5484,
+    "previous_day_accuracy": 0.4194,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

@@ -34,7 +34,7 @@ def run_seed_and_train():
         logger.info("--- Step 2: Ingesting Historical OHLCV Series (3 Years) ---")
         for s in stocks:
             df = yf_collector.fetch_historical_ohlcv(s.symbol)
-            saved = yf_collector.save_ohlcv_to_db(s.symbol, df)
+            saved = yf_collector.save_ohlcv_to_db(s.symbol, df, overwrite=True)
             logger.info(f"{s.symbol}: Ingested {saved} price records.")
 
         # Step 3: Ingest News and Reddit Data

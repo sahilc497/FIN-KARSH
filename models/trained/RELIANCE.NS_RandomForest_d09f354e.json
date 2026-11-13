@@ -1,0 +1,43 @@
+{
+  "model_id": "RELIANCE.NS_RandomForest_d09f354e",
+  "model_name": "RandomForest",
+  "symbol": "RELIANCE.NS",
+  "horizon_days": 5,
+  "metrics": {
+    "accuracy": 0.5376,
+    "balanced_accuracy": 0.4902,
+    "precision": 0.5435,
+    "recall": 0.9804,
+    "f1_score": 0.6993,
+    "mcc": -0.0946,
+    "directional_accuracy": 0.5376,
+    "roc_auc": 0.5626,
+    "pr_auc": 0.6187,
+    "confusion_matrix": [
+      [
+        0,
+        42
+      ],
+      [
+        1,
+        50
+      ]
+    ]
+  },
+  "strategy_metrics": {
+    "total_return_pct": 1.83,
+    "benchmark_return_pct": -0.07,
+    "annualized_return_pct": 5.03,
+    "sharpe_ratio": 0.15,
+    "sortino_ratio": 0.27,
+    "max_drawdown_pct": -6.52,
+    "win_rate_pct": 1533.33,
+    "profit_factor": 1.05,
+    "total_trades": 3
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.5484,
+    "previous_day_accuracy": 0.4194,
+    "momentum_baseline_accuracy": 0.51
+  }
+}

@@ -13,6 +13,7 @@ export const api = {
   getStocks: async () => (await apiClient.get('/stocks/')).data,
   searchStocks: async (q: string) => (await apiClient.get('/stocks/search', { params: { q } })).data,
   onboardStock: async (symbol: string) => (await apiClient.post(`/stocks/onboard/${symbol}`)).data,
+  syncLivePrices: async () => (await apiClient.post('/stocks/sync-live')).data,
   getStockDetail: async (symbol: string) => (await apiClient.get(`/stocks/${symbol}`)).data,
   getHistoricalOHLCV: async (symbol: string, limit = 180) =>
     (await apiClient.get(`/stocks/${symbol}/ohlcv`, { params: { limit } })).data,
